@@ -325,17 +325,61 @@ func (r *oauthProxy) checkClaim(user *userContext, claimName string, match *rege
 		return false
 	}
 
+	// Check map claim.
+	valueMap, foundMap, errMap := MapClaim(user.claims, claimName)
+	// We have found strings claim, so let's check whether it matches.
+	if foundMap {
+		for key, value := range valueMap {
+			if match.MatchString(fmt.Sprintf("%s=%s", key, value)) {
+				return true
+			}
+		}
+		r.log.Warn("claim requirement does not match any element claim group in token", append(errFields,
+			zap.String("issued", fmt.Sprintf("%v", valueStrs)),
+			zap.String("required", match.String()),
+		)...)
+
+		return false
+	}
+
 	// If this fails, the claim is probably float or int.
-	if errStr != nil && errStrs != nil {
-		r.log.Error("unable to extract the claim from token (tried string and strings)", append(errFields,
+	if errStr != nil && errStrs != nil && errMap != nil {
+		r.log.Error("unable to extract the claim from token (tried string, strings and map)", append(errFields,
 			zap.Error(errStr),
 			zap.Error(errStrs),
+			zap.Error(errMap),
 		)...)
 		return false
 	}
 
 	r.log.Warn("unexpected error", errFields...)
 	return false
+}
+
+func MapClaim(c jose.Claims, name string) (map[string]string, bool, error) {
+	cl, ok := c[name]
+	if !ok {
+		return nil, false, nil
+	}
+
+	if m, ok := cl.(map[string]string); ok {
+		return m, true, nil
+	}
+
+	// When unmarshaled, []string will become []interface{}.
+	if m, ok := cl.(map[string]interface{}); ok {
+		ret := make(map[string]string)
+		for k, v := range m {
+			str, ok := v.(string)
+			if !ok {
+				return nil, false, fmt.Errorf("unable to parse claim as map[string]string: %v", name)
+			}
+			ret[k] = str
+		}
+		return ret, true, nil
+	}
+
+	return nil, false, fmt.Errorf("unable to parse claim as map[string]string: %v", name)
 }
 
 // admissionMiddleware is responsible checking the access token against the protected resource

@@ -1,36 +1,40 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: proxy
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: proxy
   template:
     metadata:
       labels:
         name: proxy
+        app: proxy
       annotations:
         repository: https://github.com/louketo/louketo-proxy
     spec:
       containers:
-      - name: proxy
-        image: docker.io/jboss/louketo/louketo-proxy:latest
-        imagePullPolicy: Always
-        args:
-          - --config /etc/secrets/forwarding.yml
-          - --discovery-url https://sso.example.com/auth/realms/hod-test
-          - --client-id broker
-          - --client-secret
-          - --listen 127.0.0.1:3000
-          - --enable-forwarding=true
-          - --forwarding-username=username
-          - --forwarding-password=password
-          - --enable-logging=true
-          - --enable-json-logging true
-          - --verbose true
-        volumeMounts:
-        - name: secrets
-          mountPath: /etc/secrets
+        - name: proxy
+          image: docker.io/jboss/louketo/louketo-proxy:latest
+          imagePullPolicy: Always
+          args:
+            - --config /etc/secrets/forwarding.yml
+            - --discovery-url https://sso.example.com/auth/realms/hod-test
+            - --client-id broker
+            - --client-secret
+            - --listen 127.0.0.1:3000
+            - --enable-forwarding=true
+            - --forwarding-username=username
+            - --forwarding-password=password
+            - --enable-logging=true
+            - --enable-json-logging true
+            - --verbose true
+          volumeMounts:
+            - name: secrets
+              mountPath: /etc/secrets
       volumes:
-      - name: secrets
-        secret:
-          secretName: config
+        - name: secrets
+          secret:
+            secretName: config

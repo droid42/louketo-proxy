@@ -1,13 +1,17 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: proxy
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: proxy
   template:
     metadata:
       labels:
         name: proxy
+        app: proxy
       annotations:
         repository: https://github.com/louketo/louketo-proxy
     spec:
@@ -16,9 +20,9 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
       volumes:
-      - name: certs
-        secret:
-          secretName: tls
+        - name: certs
+          secret:
+            secretName: tls
       containers:
         - name: proxy
           image: docker.io/jboss/louketo/louketo-proxy:latest
@@ -49,6 +53,6 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
           volumeMounts:
-          - name: certs
-            mountPath: /certs
-            readOnly: true
+            - name: certs
+              mountPath: /certs
+              readOnly: true
